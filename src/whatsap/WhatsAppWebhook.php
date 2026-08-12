@@ -91,9 +91,12 @@ error_log('Datos: ' . json_encode($_GET ?? []));
      */
     private function handleIncomingMessage(): void {
         $rawData = file_get_contents('php://input');
-            error_log('Debug: ' . $rawData);
+            error_log('=== WEBHOOK POST RECIBIDO ===');
+            error_log('Raw Data: ' . substr($rawData, 0, 500));
+            error_log('Headers: ' . json_encode(getallheaders()));
 
         if ($rawData === false || trim($rawData) === '') {
+            error_log('Error: Request body vacío');
             http_response_code(400);
             echo 'Empty request body';
             return;
@@ -101,10 +104,13 @@ error_log('Datos: ' . json_encode($_GET ?? []));
 
         // Validar firma de Meta
         if (!$this->verifySignature($rawData)) {
+            error_log('Error: Firma inválida');
             http_response_code(403);
             echo 'Forbidden - Invalid signature';
             return;
         }
+
+        error_log('Firma válida - Procesando datos');
 
         $data = json_decode(
                 $rawData,
@@ -114,16 +120,22 @@ error_log('Datos: ' . json_encode($_GET ?? []));
         if (
                 json_last_error() !== JSON_ERROR_NONE || !is_array($data)
         ) {
+            error_log('Error: JSON inválido - ' . json_last_error_msg());
             http_response_code(400);
             echo 'Invalid JSON';
             return;
         }
 
+        error_log('Data decodificada: ' . json_encode($data, JSON_PRETTY_PRINT));
+
 //        $this->saveWebhookEvent($data);
 
         $messages = $this->extractMessages($data);
 
+        error_log('Mensajes extraídos: ' . count($messages));
+
         foreach ($messages as $message) {
+            error_log('Procesando mensaje: ' . json_encode($message));
             $this->processMessage($message);
         }
 
