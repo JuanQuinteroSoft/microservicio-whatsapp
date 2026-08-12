@@ -4,9 +4,9 @@ FROM php:8.1-apache
 # Establecer el directorio de trabajo
 WORKDIR /var/www/html
 
-# Instalar extensiones de PHP necesarias
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    curl \
+    libcurl4-openssl-dev \
     git \
     zip \
     unzip \
@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y \
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
-    json \
     curl
 
 # Instalar Composer
