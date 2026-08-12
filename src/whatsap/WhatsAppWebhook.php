@@ -16,6 +16,8 @@ class WhatsAppWebhook {
      */
     public function handle(): void {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+          error_log('Debug: ' . $_SERVER['REQUEST_METHOD']);
+error_log('Datos: ' . json_encode($_GET ?? []));
 //        $this->saveWebhookRequest();
         switch ($method) {
             case 'GET':
@@ -36,9 +38,37 @@ class WhatsAppWebhook {
         return getenv('WHATSAPP_VERIFY_TOKEN') ?: '';
     }
 
+    private function getAppSecret(): string {
+        return getenv('WHATSAPP_APP_SECRET') ?: '';
+    }
+
     /**
-     * Verifica el webhook solicitado por Meta.
+     * Valida la firma de Meta (X-Hub-Signature-256)
      */
+    private function verifySignature(string $body): bool {
+        $secret = $this->getAppSecret();
+        
+        if (empty($secret)) {
+            // Si no está configurado, permitir (útil para desarrollo)
+            return true;
+        }
+
+        $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+        
+        if (empty($signature)) {
+            return false;
+        }
+
+        // Meta envía: sha256=hash
+        if (!str_starts_with($signature, 'sha256=')) {
+            return false;
+        }
+
+        $hash = substr($signature, 7);
+        $expectedHash = hash_hmac('sha256', $body, $secret);
+
+        return hash_equals($hash, $expectedHash);
+    }
     private function verifyWebhook(): void {
         $mode = $_GET['hub_mode'] ?? '';
         $verifyToken = $_GET['hub_verify_token'] ?? '';
@@ -61,10 +91,18 @@ class WhatsAppWebhook {
      */
     private function handleIncomingMessage(): void {
         $rawData = file_get_contents('php://input');
+            error_log('Debug: ' . $rawData);
 
         if ($rawData === false || trim($rawData) === '') {
             http_response_code(400);
             echo 'Empty request body';
+            return;
+        }
+
+        // Validar firma de Meta
+        if (!$this->verifySignature($rawData)) {
+            http_response_code(403);
+            echo 'Forbidden - Invalid signature';
             return;
         }
 
