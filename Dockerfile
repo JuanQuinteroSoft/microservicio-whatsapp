@@ -24,6 +24,9 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Copiar los archivos del proyecto
 COPY . .
 
+# Crear directorio de storage si no existe
+RUN mkdir -p /var/www/html/storage/webhooks
+
 # Habilitar el módulo rewrite de Apache
 RUN a2enmod rewrite
 
@@ -49,10 +52,6 @@ default_charset = "UTF-8"' >> /usr/local/etc/php/conf.d/php-custom.ini
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html && \
     chmod -R 775 /var/www/html/storage
-
-# Crear directorio de storage si no existe
-RUN mkdir -p /var/www/html/storage/webhooks && \
-    chown -R www-data:www-data /var/www/html/storage
 
 # Exponer el puerto 80
 EXPOSE 80
